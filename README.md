@@ -7,7 +7,7 @@ A small Python API of **ATOM** Mobility.
 
 ## Installation
 
-Install python >= 9 version and install **atomfoxapi** with pip:
+Install python >= 3.9 version and install **atomfoxapi** with pip:
 
 ```bash
 pip install atomfoxapi
