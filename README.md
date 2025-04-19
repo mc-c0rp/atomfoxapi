@@ -115,6 +115,24 @@ for alert in alerts:
 # F0002 - OVERTURNED | 17.04.2025 15:04:43
 ```
 
+#### How to **get statistics**
+```python
+import atomfoxapi
+
+atom = atomfoxapi.Atom('Basic ZX...') # Authorization token
+
+stats = atom.get_statistics()
+print(f'Avaliable: {stats.available_vehicles}\nIn use: {stats.in_use_vehicles}\n',
+      f'Total: {stats.total_vehicles}\n Maintenance: {stats.in_service_vehicles}\n')
+
+# this sctipt get statistics of vehicles
+# example output:
+# Avaliable: 444
+# In use: 19
+# Total: 490
+# Maintenance: 30
+```
+
 ## Authors
 
 - [mc_c0rp](https://www.github.com/mc-c0rp) - GitHub
