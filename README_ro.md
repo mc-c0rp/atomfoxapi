@@ -115,6 +115,24 @@ for alert in alerts:
 # F0002 - OVERTURNED | 17.04.2025 15:04:43
 ```
 
+#### Cum să **obții statistici**
+```python
+import atomfoxapi
+
+atom = atomfoxapi.Atom('Basic ZX...') # Token de autorizare
+
+stats = atom.get_statistics()
+print(f'Avaliable: {stats.available_vehicles}\nIn use: {stats.in_use_vehicles}\n',
+      f'Total: {stats.total_vehicles}\n Maintenance: {stats.in_service_vehicles}\n')
+
+# acest script obține statistici despre vehicule
+# exemplu de ieșire:
+# Avaliable: 444
+# In use: 19
+# Total: 490
+# Maintenance: 30
+```
+
 ## Autori
 
 - [mc_c0rp](https://www.github.com/mc-c0rp) - GitHub
