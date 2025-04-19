@@ -1,4 +1,4 @@
-[🇬🇧 English](./README_en.md) | [🇷🇺 Русский](./README_ru.md) | [🇷🇴 Română](./README_ro.md)
+[🇬🇧 English](./README.md) | [🇷🇺 Русский](./README_ru.md) | [🇷🇴 Română](./README_ro.md)
 
 # atomfoxapi
 
