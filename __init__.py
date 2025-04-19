@@ -22,7 +22,9 @@ from .main import (
     RidesItem,
     VehiclesItem,
     AlertItem,
-    Tasks
+    Tasks,
+    Statistics,
+    EmployeeActivityLogStatus
 )
 
 __all__ = [
@@ -35,5 +37,7 @@ __all__ = [
     "RidesItem",
     "VehiclesItem",
     "AlertItem",
-    "Tasks"
+    "Tasks",
+    "Statistics",
+    "EmployeeActivityLogStatus"
 ]

@@ -10,11 +10,17 @@
 # version log:
 # T01 - первые наброски                                                 # R01 - фикс багов и первый релиз в pypi | pypi ver. 1.0.4
 # T02 - почти готовая основа                                            # R02 - добавлены функции delete_task; done_task. | pypi ver. 1.1.0
-# R03 - добавлен параметр load_all в get_alerts() | pypi ver. 1.1.6
-import requests
-from typing import Literal, List, Union, Optional
-from datetime import datetime, timedelta
-from pydantic import BaseModel
+# R03 - добавлен параметр load_all в get_alerts() | pypi ver. 1.1.6     # R04 - фикс подсказок для IDE | pypi ver. 1.1.8
+# R05 - добавлена функция get_statistics() и get_employee_activity_log, также автоматическая установка зависимостей | pypi ver. 1.2.1
+try:
+    import requests
+    from typing import Literal, List, Optional, Union
+    from datetime import datetime, timedelta
+    from pydantic import BaseModel
+except ImportError:
+    import os
+    os.system('pip install requests pydantic')
+
 
 # -------------------------------
 #  Вспомогательные структуры и модели
@@ -84,11 +90,11 @@ class Navigation(BaseModel):
     latitude: float
 
 class Iot(BaseModel):
-    battery: int
-    id: int
-    imei: str
-    phone_number: str
-    last_update: str
+    battery: Optional[int] = None
+    id: Optional[int] = None
+    imei: Optional[str] = None
+    phone_number: Optional[str] = None
+    last_update: Optional[str] = None
 
 class RidesItem(BaseModel):
     id: int
@@ -96,7 +102,7 @@ class RidesItem(BaseModel):
     end_time: str
     vehicle_number: str
     vehicle_id: int
-    kilometers: Union[str, float]
+    kilometers: float
     time: str
     price: str
     charged_balance: str
@@ -105,7 +111,7 @@ class RidesItem(BaseModel):
     comment: str
     end_location: Navigation
     image: Optional[Union[List[str], str]]
-    user_end_location: Optional[Navigation] = None
+    user_end_location: Optional[Navigation]
     user_id: int
     user_name: str
     phone: str
@@ -143,15 +149,60 @@ class Tasks(BaseModel):
     stage: str
     type: str
 
+class Statistics(BaseModel):
+    available_vehicles: int
+    in_use_vehicles: int
+    charging_vehicles: int
+    in_service_vehicles: int
+    total_vehicles: int
+    all_vehicles: int
+    discharged_vehicles: int
+    needs_investigation_vehicles: int
+    stolen_vehicles: int
+    not_ready_vehicles: int
+    transportation_vehicles: int
+    storage_vehicles: int
+    rides_today: int
+    rides_yesterday: int
+    average_rides: int
+    customers_today: int
+    customers_yesterday: int
+    average_customers: int
+    rides_revenue_today: Optional[str] = None
+    rides_revenue_yesterday: Optional[str] = None
+    topup_today: Optional[str] = None
+    topup_yesterday: Optional[str] = None
+    active_vehicles_with_errors: List[str] = []
+    currency_symbol: str
+    currency_code: str
+    total_vehicle_error_count: int = 0
+    tasks_today: int = 0
+    tasks_yesterday: int = 0
+    open_tasks: int = 0
+    damages_today: int = 0
+    damages_yesterday: int = 0
+    open_damages: int = 0
+    rebalancing_vehicles: int = 0
+    subscriptions_revenue_today: Optional[str] = None
+    subscriptions_revenue_yesterday: Optional[str] = None
 
-# -------------------------------
-#  Основной класс Atom
-# -------------------------------
+class EmployeeActivityLogStatus(BaseModel):
+    admin_email: str
+    admin_id: int
+    coordinates: str # GOOGLE LINK!!!
+    date: str
+    last_iot_update_date: str
+    last_ride_date: str
+    status_from: str
+    status_to: str
+    vehicle_battery: str # С СИМВОЛОМ %!!!!!
+    vehicle_id: int
+    vehicle_nr: str
+
+
 class Atom:
     def __init__(self, token: str):
         """
-        Инициализация класса Atom.
-
         :param token: ATOM Mobility token
         """
         self.token = token
@@ -170,12 +221,9 @@ class Atom:
         models: List[int] = [0],
         page_length: int = 100,
         today: bool = False
-    ) -> Union[List[RidesItem], bool]:
+    ) -> List[RidesItem]:
         url = 'https://app.rideatom.com/api/v2/admin/rides'
-        headers = {
-            "authorization": self.token
-        }
-
+        headers = {"authorization": self.token}
         if today:
             now = datetime.now()
             data = {
@@ -188,10 +236,7 @@ class Atom:
                 "feedback": {"from": feedback_from, "to": feedback_to},
                 "models": models,
                 "use_page_by_page": True,
-                "date_range": {
-                    "from": str(now.strftime("%Y-%m-%d")),
-                    "to": str(now.strftime("%Y-%m-%d"))
-                }
+                "date_range": {"from": now.strftime("%Y-%m-%d"), "to": now.strftime("%Y-%m-%d")}                
             }
         else:
             data = {
@@ -205,22 +250,15 @@ class Atom:
                 "models": models,
                 "use_page_by_page": True
             }
-
-        response = requests.post(url, json=data, headers=headers)
-        if response.status_code == 200:
-            data = response.json()['data']
-            data_new = []
-
-            for ride in data:
-                if ride_status != 'ACTIVE':
-                    ride['kilometers'] = float(str(ride['kilometers']).replace(' km', ''))
-                data_new.append(ride)
-
-            rides: List[RidesItem] = [RidesItem.parse_obj(item) for item in data_new]
-            return rides
-        else:
-            print("err: token not working!")
-            return False
+        resp = requests.post(url, json=data, headers=headers)
+        resp.raise_for_status()
+        rides_data = resp.json().get('data', [])
+        rides: List[RidesItem] = []
+        for ride in rides_data:
+            if ride_status != 'ACTIVE':
+                ride['kilometers'] = float(str(ride['kilometers']).replace(' km', ''))
+            rides.append(RidesItem.parse_obj(ride))
+        return rides
 
     def get_vehicles(
         self,
@@ -247,11 +285,9 @@ class Atom:
         models: List[int] = [0],
         page_length: int = 100,
         load_all: bool = False
-    ) -> Union[List[VehiclesItem], bool]:
+    ) -> List[VehiclesItem]:
         url = 'https://app.rideatom.com/api/v2/admin/vehicles'
-        headers = {
-            "authorization": self.token
-        }
+        headers = {"authorization": self.token}
         data = {
             "page": page,
             "page_length": page_length,
@@ -267,30 +303,17 @@ class Atom:
                 {"from": total_rides_from, "to": total_rides_to, "key": "total_rides"}
             ]
         }
-
-        response = requests.post(url, json=data, headers=headers)
-        all_vehicles = []
-
-        if response.status_code == 200:
-            response_data = response.json()
-            for vehicle in response_data['data']:
-                all_vehicles.append(vehicle)
-
-            if load_all:
-                while True:
-                    page += 1
-                    data['page'] = page
-                    response_data = requests.post(url, json=data, headers=headers).json()
-                    for vehicle in response_data['data']:
-                        all_vehicles.append(vehicle)
-                    if response_data['has_next_page'] == False:
-                        break
-
-            vehicles: List[VehiclesItem] = [VehiclesItem.parse_obj(item) for item in all_vehicles]
-            return vehicles
-        else:
-            print("err: token not working!")
-            return False
+        all_data: List[dict] = []
+        while True:
+            resp = requests.post(url, json=data, headers=headers)
+            resp.raise_for_status()
+            page_data = resp.json().get('data', [])
+            all_data.extend(page_data)
+            if not load_all or not resp.json().get('has_next_page'):
+                break
+            data['page'] += 1
+        vehicles = [VehiclesItem.parse_obj(item) for item in all_data]
+        return vehicles
 
     def get_alerts(
         self,
@@ -299,57 +322,34 @@ class Atom:
         page: int = 1,
         page_length: int = 100,
         load_all: bool = False
-        ) -> Union[List[AlertItem], bool]:
-            url = 'https://app.rideatom.com/api/v2/admin/vehicle-alerts'
-            headers = {
-                "authorization": self.token
-            }
+    ) -> List[AlertItem]:
+        url = 'https://app.rideatom.com/api/v2/admin/vehicle-alerts'
+        headers = {"authorization": self.token}
+        data = {"filter": filter, "search": search, "page": page, "page_length": page_length}
+        all_alerts: List[dict] = []
+        while True:
+            resp = requests.post(url, json=data, headers=headers)
+            resp.raise_for_status()
+            json_resp = resp.json()
+            all_alerts.extend(json_resp.get('data', []))
+            if not load_all or not json_resp.get('has_next_page'):
+                break
+            data['page'] += 1
+        return [AlertItem.parse_obj(a) for a in all_alerts]
 
-            data = {
-                "filter": filter,
-                "page_length": page_length,
-                "page": page,
-                "search": search
-            }
+    def get_employee_activity_log(
+        self,
+        search: str = "",
+        page_length: int = 100,
+    ) -> List[EmployeeActivityLogStatus]:
+        url = 'https://app.rideatom.com/api/v2/admin/employee-activity-log'
+        headers = {"authorization": self.token}
+        data = {"filter": "VEHICLE_STATUS_CHANGE", "search": search, "page_length": page_length} # потом добавлю остальные фильтры
+        resp = requests.post(url, json=data, headers=headers)
+        resp.raise_for_status()
+        logs = resp.json().get('data', [])
 
-            response = requests.post(url, json=data, headers=headers)
-            all_alerts = []
-
-            if response.status_code == 200:
-                response_data = response.json()
-                all_alerts.extend(response_data['data'])
-
-                if load_all:
-                    bookmark_next = response_data.get('next_page_id')
-                    bookmark_previous = response_data.get('previous_page_id')
-                    next_page_number = response_data.get('next_page_number', page + 1)
-
-                    while response_data.get('has_next_page'):
-                        data = {
-                            "filter": filter,
-                            "page_length": page_length,
-                            "page": next_page_number,
-                            "search": search,
-                            "bookmark_next": bookmark_next,
-                            "bookmark_previous": bookmark_previous,
-                            "bookmark_next_page": next_page_number
-                        }
-                        response = requests.post(url, json=data, headers=headers)
-                        if response.status_code != 200:
-                            break
-
-                        response_data = response.json()
-                        all_alerts.extend(response_data['data'])
-
-                        bookmark_next = response_data.get('next_page_id')
-                        bookmark_previous = response_data.get('previous_page_id')
-                        next_page_number = response_data.get('next_page_number', next_page_number + 1)
-
-                alerts: List[AlertItem] = [AlertItem.parse_obj(item) for item in all_alerts]
-                return alerts
-            else:
-                print("err: token not working!")
-                return False
+        return [EmployeeActivityLogStatus.parse_obj(a) for a in logs]
 
 
     def get_tasks(
@@ -357,134 +357,107 @@ class Atom:
         vehicle_id: int,
         page: int = 1,
         page_length: int = 100
-    ) -> Union[List[Tasks], bool]:
+    ) -> List[Tasks]:
         url = 'https://app.rideatom.com/api/v2/admin/vehicle/tasks'
-        headers = {
-            "authorization": self.token
-        }
-        data = {
-            "vehicle_id": vehicle_id,
-            "page_length": page_length,
-            "page": page
-        }
-
-        response = requests.post(url, json=data, headers=headers)
-        if response.status_code == 200:
-            data = response.json()['data']
-            tasks: List[Tasks] = [Tasks.parse_obj(item) for item in data]
-            return tasks
-        else:
-            print("err: token not working!")
-            return False
+        headers = {"authorization": self.token}
+        data = {"vehicle_id": vehicle_id, "page": page, "page_length": page_length}
+        resp = requests.post(url, json=data, headers=headers)
+        resp.raise_for_status()
+        tasks_data = resp.json().get('data', [])
+        return [Tasks.parse_obj(t) for t in tasks_data]
+    
+    def get_statistics(
+        self
+    ) -> Statistics:
+        url = 'https://app.rideatom.com/api/v2/admin/dashboard/statistics'
+        headers = {"authorization": self.token}
+        resp = requests.get(url, headers=headers)
+        resp.raise_for_status()
+        stats_data = resp.json()
+        stats_data['total_vehicles'] = (
+    stats_data['available_vehicles'] +
+    stats_data['in_use_vehicles'] +
+    stats_data['charging_vehicles'] +
+    stats_data['in_service_vehicles'] +
+    stats_data['discharged_vehicles'] +
+    stats_data['needs_investigation_vehicles'] +
+    stats_data['stolen_vehicles'] +
+    stats_data['not_ready_vehicles'] +
+    stats_data['transportation_vehicles'] +
+    stats_data['storage_vehicles']
+)
+        stats_data['all_vehicles'] = (
+    stats_data['available_vehicles'] +
+    stats_data['in_use_vehicles'] +
+    stats_data['charging_vehicles'] +
+    stats_data['in_service_vehicles'] +
+    stats_data['discharged_vehicles'] +
+    stats_data['needs_investigation_vehicles'] +
+    stats_data['stolen_vehicles'] +
+    stats_data['not_ready_vehicles'] +
+    stats_data['transportation_vehicles'] +
+    stats_data['storage_vehicles']
+)
+        return Statistics.parse_obj(stats_data)
 
     def set_task(
         self,
-        type: tasks_types,
+        task_type: tasks_types,
         priority: Literal['LOW', 'MEDIUM', 'HIGH'],
         description: str,
         vehicle_id: int
     ) -> bool:
         url = 'https://app.rideatom.com/api/v2/admin/task-manager/manage'
-        headers = {
-            "authorization": self.token
-        }
+        headers = {"authorization": self.token}
         now = datetime.now()
-        one_minute_later = now + timedelta(minutes=1)
         data = {
-            "type_id": tasks[type],
+            "type_id": tasks[task_type],
             "priority": priority,
             "description": description,
-            "start_date": str(now.strftime("%Y-%m-%d")),
-            "start_time": str(one_minute_later.strftime("%H:%M")),
+            "start_date": now.strftime("%Y-%m-%d"),
+            "start_time": (now + timedelta(minutes=1)).strftime("%H:%M"),
             "vehicle_id": vehicle_id
         }
-        response = requests.post(url, json=data, headers=headers)
-        if response.status_code == 200:
-            return True
-        else:
-            print("err: token not working!")
-            return False
-        
-    def delete_task(
-        self,
-        entity_id: int
-    ) -> bool:
-        url = 'https://app.rideatom.com/api/v2/admin/task-manager/review'
-        headers = {
-            "authorization": self.token
-        }
-        data = {
-            "action": "DELETE",
-            "entity_id": entity_id
-        }
-        response = requests.post(url, json=data, headers=headers)
-        if response.status_code == 200:
-            return True
-        else:
-            print("err: token not working!")
-            return False
-        
-    def done_task(
-        self,
-        entity_id: int
-    ) -> bool:
-        url = 'https://app.rideatom.com/api/v2/admin/task-manager/review'
-        headers = {
-            "authorization": self.token
-        }
-        data = {
-            "action": "DONE",
-            "entity_id": entity_id
-        }
-        response = requests.post(url, json=data, headers=headers)
-        if response.status_code == 200:
-            return True
-        else:
-            print("err: token not working!")
-            return False
+        resp = requests.post(url, json=data, headers=headers)
+        resp.raise_for_status()
+        return True
 
-    def send_command(
-        self,
-        command: commands,
-        vehicle_id: int
-    ) -> bool:
+    def delete_task(self, entity_id: int) -> bool:
+        url = 'https://app.rideatom.com/api/v2/admin/task-manager/review'
+        headers = {"authorization": self.token}
+        data = {"action": "DELETE", "entity_id": entity_id}
+        resp = requests.post(url, json=data, headers=headers)
+        resp.raise_for_status()
+        return True
+
+    def done_task(self, entity_id: int) -> bool:
+        url = 'https://app.rideatom.com/api/v2/admin/task-manager/review'
+        headers = {"authorization": self.token}
+        data = {"action": "DONE", "entity_id": entity_id}
+        resp = requests.post(url, json=data, headers=headers)
+        resp.raise_for_status()
+        return True
+
+    def send_command(self, command: commands, vehicle_id: int) -> bool:
         url = 'https://app.rideatom.com/api/v2/admin/vehicle/command'
-        headers = {
-            "authorization": self.token
-        }
-        data = {
-            "command": command,
-            "vehicle_id": vehicle_id
-        }
-        response = requests.post(url, json=data, headers=headers)
-        print(response.json())
-
-        if response.status_code == 200:
-            return True
-        else:
-            print("err: token not working!")
-            return False
+        headers = {"authorization": self.token}
+        data = {"command": command, "vehicle_id": vehicle_id}
+        resp = requests.post(url, json=data, headers=headers)
+        resp.raise_for_status()
+        return True
 
     def set_status(
         self,
-        type: Literal['READY', 'DISCHARGED', 'CHARGING', 'NEED_INVESTIGATION', 'NEED_SERVICE',
-                       'TRANSPORTATION', 'STORAGE', 'NOT_READY', 'STOLEN', 'DEPRECATED'],
+        status: Literal['READY', 'DISCHARGED', 'CHARGING', 'NEED_INVESTIGATION', 'NEED_SERVICE',
+                       'TRANSPORTATION', 'STORAGE', 'NOT_READY', 'ST stolen', 'DEPRECATED'],
         vehicle_id: int
     ) -> bool:
-        url = 'https://app.rideatom.com/api/v2/admin/vehicle/status'
-        headers = {
-            "authorization": self.token
-        }
-        data = {
-            "status": type,
-            "vehicle_id": vehicle_id
-        }
-        response = requests.put(url, json=data, headers=headers)
-        if response.status_code == 200:
-            return True
-        else:
-            print("err: token not working!")
-            return False
+        url = 'https://app.ridde.iam.com/api/v2/admin/vehicle/status'
+        headers = {"authorization": self.token}
+        data = {"status": status, "vehicle_id": vehicle_id}
+        resp = requests.put(url, json=data, headers=headers)
+        resp.raise_for_status()
+        return True
 
 print("-----------------------")
 print("ATOM Mobility API | R03")
