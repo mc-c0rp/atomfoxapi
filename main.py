@@ -1,6 +1,6 @@
 # ATOM MOBILITY API V2
 # by mc_c0rp for FAST FOX
-# version R03
+# version R07
 
 # version description:
 # T - TEST
@@ -12,6 +12,9 @@
 # T02 - почти готовая основа                                            # R02 - добавлены функции delete_task; done_task. | pypi ver. 1.1.0
 # R03 - добавлен параметр load_all в get_alerts() | pypi ver. 1.1.6     # R04 - фикс подсказок для IDE | pypi ver. 1.1.8
 # R05 - добавлена функция get_statistics() и get_employee_activity_log, также автоматическая установка зависимостей | pypi ver. 1.2.1
+# R06 - добавлена функция get_iots() | pypi ver. 1.2.3 / 23.04.2025
+# R07 - добавлега функция get_new_iot_detected() и send_notification(); функции типа set теперь возвращают False при неудачном запросе | pypi ver. 1.2.4 / 23.04.2025
+
 try:
     import requests
     from typing import Literal, List, Optional, Union
@@ -199,6 +202,18 @@ class EmployeeActivityLogStatus(BaseModel):
     vehicle_id: int
     vehicle_nr: str
 
+class ManageIot(BaseModel):
+    id: int
+    imei: str
+    model: str
+    phone_prefix: int
+    phone: str
+    battery: int
+    last_update: str
+    is_integrated: Union[str, bool]
+    allows_tcp_commands: Union[str, bool]
+    subaccount_id: int
+
 
 class Atom:
     def __init__(self, token: str):
@@ -314,6 +329,36 @@ class Atom:
             data['page'] += 1
         vehicles = [VehiclesItem.parse_obj(item) for item in all_data]
         return vehicles
+    
+    def get_iots(
+        self,
+        filter: Literal[
+            "ALL", "ONLY_USED", "NOT_USED", "INACTIVE_1_DAY"
+        ] = "ALL",
+        search: str = "",
+        page: int = 1,
+        page_length: int = 100,
+        load_all: bool = False
+    ) -> List[ManageIot]:
+        url = 'https://app.rideatom.com/api/v2/admin/trackers'
+        headers = {"authorization": self.token}
+        data = {
+            "page": page,
+            "page_length": page_length,
+            "search": search,
+            "filter": filter
+        }
+        all_data: List[dict] = []
+        while True:
+            resp = requests.post(url, json=data, headers=headers)
+            resp.raise_for_status()
+            page_data = resp.json().get('data', [])
+            all_data.extend(page_data)
+            if not load_all or not resp.json().get('has_next_page'):
+                break
+            data['page'] += 1
+        iots = [ManageIot.model_validate(item) for item in all_data]
+        return iots
 
     def get_alerts(
         self,
@@ -365,6 +410,16 @@ class Atom:
         resp.raise_for_status()
         tasks_data = resp.json().get('data', [])
         return [Tasks.parse_obj(t) for t in tasks_data]
+    
+    def get_new_iot_detected(
+        self
+    ) -> List:
+        url = 'https://app.rideatom.com/api/v2/admin/trackers/new-iot-detector'
+        headers = {"authorization": self.token}
+        resp = requests.get(url, headers=headers)
+        resp.raise_for_status()
+        iots_data = resp.json().get('data', [])
+        return iots_data
     
     def get_statistics(
         self
@@ -420,6 +475,25 @@ class Atom:
         }
         resp = requests.post(url, json=data, headers=headers)
         resp.raise_for_status()
+        if resp.status_code != 200:
+            return False
+        return True
+    
+    def send_notification(
+        self,
+        title: str, message: str, user_id: int
+    ) -> bool:
+        url = 'https://app.rideatom.com/api/v2/admin/user/send-push-notification'
+        headers = {"authorization": self.token}
+        data = {
+            "title": title,
+            "message": message,
+            "user_id": user_id
+        }
+        resp = requests.post(url, json=data, headers=headers)
+        resp.raise_for_status()
+        if resp.status_code != 200:
+            return False
         return True
 
     def delete_task(self, entity_id: int) -> bool:
@@ -428,6 +502,8 @@ class Atom:
         data = {"action": "DELETE", "entity_id": entity_id}
         resp = requests.post(url, json=data, headers=headers)
         resp.raise_for_status()
+        if resp.status_code != 200:
+            return False
         return True
 
     def done_task(self, entity_id: int) -> bool:
@@ -444,6 +520,8 @@ class Atom:
         data = {"command": command, "vehicle_id": vehicle_id}
         resp = requests.post(url, json=data, headers=headers)
         resp.raise_for_status()
+        if resp.status_code != 200:
+            return False
         return True
 
     def set_status(
@@ -457,10 +535,12 @@ class Atom:
         data = {"status": status, "vehicle_id": vehicle_id}
         resp = requests.put(url, json=data, headers=headers)
         resp.raise_for_status()
+        if resp.status_code != 200:
+            return False
         return True
 
 print("-----------------------")
-print("ATOM Mobility API | R03")
+print("ATOM Mobility API | R07")
 print("by mc_c0rp for FAST FOX")
 print("       started!        ")
 print("-----------------------")
