@@ -3,6 +3,7 @@
 # atomfoxapi
 
 O mică API Python pentru **ATOM** Mobility.
+[Pypi](https://pypi.org/project/atomfoxapi/)
 
 ## Instalare
 
