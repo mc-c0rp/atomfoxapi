@@ -3,6 +3,7 @@
 # atomfoxapi
 
 Небольшое Python API для **ATOM** Mobility.
+[Pypi](https://pypi.org/project/atomfoxapi/)
 
 ## Установка
 
