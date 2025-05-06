@@ -13,7 +13,8 @@
 # R03 - добавлен параметр load_all в get_alerts() | pypi ver. 1.1.6     # R04 - фикс подсказок для IDE | pypi ver. 1.1.8
 # R05 - добавлена функция get_statistics() и get_employee_activity_log, также автоматическая установка зависимостей | pypi ver. 1.2.1
 # R06 - добавлена функция get_iots() | pypi ver. 1.2.3 / 23.04.2025
-# R07 - добавлега функция get_new_iot_detected() и send_notification(); функции типа set теперь возвращают False при неудачном запросе | pypi ver. 1.2.4 / 23.04.2025
+# R07 - добавлега функция get_09new_iot_detected() и send_notification(); функции типа set теперь возвращают False при неудачном запросе | pypi ver. 1.2.4 / 23.04.2025
+# R08 - удален print ответа от сервера в функции get_rides() | pypi ver. 1.2.5 / 06.05.2025
 
 try:
     import requests
@@ -214,6 +215,28 @@ class ManageIot(BaseModel):
     allows_tcp_commands: Union[str, bool]
     subaccount_id: int
 
+class TaskManagerItem(BaseModel):
+    id: int
+    date: str
+    type: str
+    priority: str
+    stage: str
+    start_date: str
+    end_date: str
+    vehicle_nr: str
+    vehicle_id: int
+    imei: str
+    status: str
+    created_by: str
+    marked_as_done_date: str
+    marked_as_done_by: str
+
+class TasksManagerResponse(BaseModel):
+    bookmark_next: str
+    bookmark_previous: str
+    has_next_page: bool
+    has_previous_page: bool
+    data: List[TaskManagerItem]
 
 class Atom:
     def __init__(self, token: str):
@@ -411,6 +434,46 @@ class Atom:
         tasks_data = resp.json().get('data', [])
         return [Tasks.parse_obj(t) for t in tasks_data]
     
+    # Новые классы для подсказок (автодополнения) при работе с задачами
+
+    # Изменённый метод get_tasks_manager
+    def get_tasks_manager(
+        self,
+        search: str = "",
+        task_stages: List[Literal["ALL", "TODO"]] = ["ALL"],
+        task_types: List[str] = ["ALL"],
+        task_priorities: List[Literal["ALL", "LOW", "MEDIUM", "HIGH"]] = ["ALL"],
+        vehicle_statuses: List[str] = ["ALL"],
+        vehicle_model_ids: List[int] = [0],
+        date_range_from: str = '',
+        date_range_to: str = '',
+        page_length: int = 100,
+        page_bookmark: str = ""
+    ) -> TasksManagerResponse:
+        if date_range_from == '':
+            print("Data range is empty!")
+            exit()
+        if date_range_to == '':
+            print("Data range is empty!")
+            exit()
+        url = 'https://app.rideatom.com/api/v2/admin/task-manager'
+        headers = {"authorization": self.token}
+        data = {
+            "search": search,
+            "task_stages": task_stages,
+            "task_types": task_types,
+            "task_priorities": task_priorities,
+            "vehicle_statuses": vehicle_statuses,
+            "vehicle_model_ids": vehicle_model_ids,
+            "date_range": {"from": date_range_from, "to": date_range_to},
+            "page_length": page_length,
+            "page_bookmark": page_bookmark
+        }
+        resp = requests.post(url, json=data, headers=headers)
+        resp.raise_for_status()
+        response_data = resp.json()
+        return TasksManagerResponse.parse_obj(response_data)
+    
     def get_new_iot_detected(
         self
     ) -> List:
@@ -527,10 +590,10 @@ class Atom:
     def set_status(
         self,
         status: Literal['READY', 'DISCHARGED', 'CHARGING', 'NEED_INVESTIGATION', 'NEED_SERVICE',
-                       'TRANSPORTATION', 'STORAGE', 'NOT_READY', 'ST stolen', 'DEPRECATED'],
+                       'TRANSPORTATION', 'STORAGE', 'NOT_READY', 'STOLEN', 'DEPRECATED'],
         vehicle_id: int
     ) -> bool:
-        url = 'https://app.ridde.iam.com/api/v2/admin/vehicle/status'
+        url = 'https://app.rideatom.com/api/v2/admin/vehicle/status'
         headers = {"authorization": self.token}
         data = {"status": status, "vehicle_id": vehicle_id}
         resp = requests.put(url, json=data, headers=headers)
