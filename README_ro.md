@@ -151,6 +151,23 @@ for log in logs:
 # office@foxscooters.md - FF0001 | Available → Transportation
 ```
 
+#### Cum să **trimiți o notificare** unui utilizator:
+```python
+import atomfoxapi
+
+atom = atomfoxapi.Atom('Basic ZX...') # Token de autorizare
+
+response = atom.send_notification('title', 'message', 1234567) # trimite notificarea
+
+if response:
+    print('Succes!')
+else:
+    print('A apărut o eroare.')
+
+# Acest script trimite o notificare în aplicație pentru utilizatorul cu id-ul 1234567
+# ROL NECESAR: ≥ General manager (cel care are acces la fila Customers)
+```
+
 ## Autori
 
 - [mc_c0rp](https://www.github.com/mc-c0rp) - GitHub
@@ -160,4 +177,4 @@ for log in logs:
 
 [MIT](https://choosealicense.com/licenses/mit/)
 
-Moldavskie Technologies | 17.04.2025
+last upd 28.06.2025 (переведено через чат гпт)
