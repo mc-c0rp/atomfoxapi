@@ -176,3 +176,5 @@ else:
 ## Лицензия
 
 [MIT](https://choosealicense.com/licenses/mit/)
+
+last upd 28.06.2025
