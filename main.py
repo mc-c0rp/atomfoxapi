@@ -13,8 +13,10 @@
 # R03 - добавлен параметр load_all в get_alerts() | pypi ver. 1.1.6     # R04 - фикс подсказок для IDE | pypi ver. 1.1.8
 # R05 - добавлена функция get_statistics() и get_employee_activity_log, также автоматическая установка зависимостей | pypi ver. 1.2.1
 # R06 - добавлена функция get_iots() | pypi ver. 1.2.3 / 23.04.2025
-# R07 - добавлега функция get_09new_iot_detected() и send_notification(); функции типа set теперь возвращают False при неудачном запросе | pypi ver. 1.2.4 / 23.04.2025
+# R07 - добавлена функция get_new_iot_detected() и send_notification(); функции типа set теперь возвращают False при неудачном запросе | pypi ver. 1.2.4 / 23.04.2025
 # R08 - удален print ответа от сервера в функции get_rides() | pypi ver. 1.2.5 / 06.05.2025
+# R09 - добавлена функция find_users | pypi ver. 1.2.6 / 08.05.2025.    # R10 - добавлена функция get_task_manager_info и get_tasks_manager | pypi ver. 1.2.7 / 11.05.2025
+# R11 - исправлен баг с get_statistics() | pypi ver. 1.2.8 / 30.05.2025 # R12 - добавлена функция get_vehicle_activity | pypi ver. 1.3.0 / 26.06.2025
 
 try:
     import requests
@@ -166,12 +168,12 @@ class Statistics(BaseModel):
     not_ready_vehicles: int
     transportation_vehicles: int
     storage_vehicles: int
-    rides_today: int
-    rides_yesterday: int
-    average_rides: int
-    customers_today: int
-    customers_yesterday: int
-    average_customers: int
+    rides_today: Optional[int] = None
+    rides_yesterday: Optional[int] = None
+    average_rides: Optional[int] = None
+    customers_today: Optional[int] = None
+    customers_yesterday: Optional[int] = None
+    average_customers: Optional[int] = None
     rides_revenue_today: Optional[str] = None
     rides_revenue_yesterday: Optional[str] = None
     topup_today: Optional[str] = None
@@ -238,6 +240,36 @@ class TasksManagerResponse(BaseModel):
     has_previous_page: bool
     data: List[TaskManagerItem]
 
+class FindUser(BaseModel):
+    id: int
+    email: str
+    phone: str
+    name: str
+    document: str
+    document_addition: str
+    document_number: str
+    saved_card: bool
+    wallet: int
+    debt: int
+    rides: int
+    avg_feedback: str
+    blocked: bool
+    currency_symbol: str
+    currency_code: str
+
+class TaskManagerInfo(BaseModel):
+    type: str
+    priority: str
+    start_date: str
+    end_date: str
+    description: str
+
+class VehicleActivity(BaseModel):
+    date: str
+    user: str
+    action: str
+    description: str # always '-', hui ego znaet pochemu
+
 class Atom:
     def __init__(self, token: str):
         """
@@ -247,7 +279,7 @@ class Atom:
 
     def get_rides(
         self,
-        ride_status: Literal["ENDED", "ACTIVE"],
+        ride_status: Literal["ENDED", "ACTIVE"] = "ENDED",
         search: str = "",
         comments: Literal["ALL", "AVAILABLE"] = "AVAILABLE",
         distance_from: int = 0,
@@ -295,7 +327,7 @@ class Atom:
         for ride in rides_data:
             if ride_status != 'ACTIVE':
                 ride['kilometers'] = float(str(ride['kilometers']).replace(' km', ''))
-            rides.append(RidesItem.parse_obj(ride))
+            rides.append(RidesItem.model_validate(ride))
         return rides
 
     def get_vehicles(
@@ -350,8 +382,51 @@ class Atom:
             if not load_all or not resp.json().get('has_next_page'):
                 break
             data['page'] += 1
-        vehicles = [VehiclesItem.parse_obj(item) for item in all_data]
+        vehicles = [VehiclesItem.model_validate(item) for item in all_data]
         return vehicles
+    
+    def find_users(
+        self,
+        filter: List[Literal[
+            "ALL", "WITH_DEBT", "BLOCKED", "WITH_SAVED_CARD", "WITHOUT_SAVED_CARD", "DELETION_REQUESTED"
+        ]] = ["ALL"],
+        search: str = "",
+        page_length: int = 100,
+        wallet_from: int = 0,
+        wallet_to: int = 100,
+        rides_from: int = 0,
+        rides_to: int = 100,
+        last_ride_from: int = 0,
+        last_ride_to: int = 168,
+        feedback_from: int = 0,
+        feedback_to: int = 5
+    ) -> List[FindUser]:
+        url = 'https://app.rideatom.com/api/v2/admin/users'
+        headers = {"authorization": self.token}
+        data = {
+            "page_length": page_length,
+            "search": search,
+            "filter": filter,
+            "sliders": [
+                {"from": wallet_from, "to": wallet_to, "key": "wallet"},
+                {"from": rides_from, "to": rides_to, "key": "rides"},
+                {"from": feedback_from, "to": feedback_to, "key": "feedback"},
+                {"from": last_ride_from, "to": last_ride_to, "key": "last_ride"}
+            ],
+            "use_page_by_page": True
+        }
+        all_data: List[dict] = []
+        resp = requests.post(url, json=data, headers=headers)
+        resp.raise_for_status()
+        page_data = resp.json().get('data', [])
+        all_data.extend(page_data)
+        for data in all_data:
+            if data["saved_card"] == "Yes":
+                data['saved_card'] = True
+            else:
+                data['saved_card'] = False
+        users = [FindUser.model_validate(item) for item in all_data]
+        return users
     
     def get_iots(
         self,
@@ -403,7 +478,7 @@ class Atom:
             if not load_all or not json_resp.get('has_next_page'):
                 break
             data['page'] += 1
-        return [AlertItem.parse_obj(a) for a in all_alerts]
+        return [AlertItem.model_validate(a) for a in all_alerts]
 
     def get_employee_activity_log(
         self,
@@ -417,7 +492,7 @@ class Atom:
         resp.raise_for_status()
         logs = resp.json().get('data', [])
 
-        return [EmployeeActivityLogStatus.parse_obj(a) for a in logs]
+        return [EmployeeActivityLogStatus.model_validate(a) for a in logs]
 
 
     def get_tasks(
@@ -432,7 +507,16 @@ class Atom:
         resp = requests.post(url, json=data, headers=headers)
         resp.raise_for_status()
         tasks_data = resp.json().get('data', [])
-        return [Tasks.parse_obj(t) for t in tasks_data]
+        return [Tasks.model_validate(t) for t in tasks_data]
+    
+    def get_task_manager_info(self, entity: int) -> TaskManagerInfo:
+        url = 'https://app.rideatom.com/api/v2/admin/task-manager/review'
+        headers = {"authorization": self.token}
+        params = {"entity_id": entity}
+        resp = requests.get(url, params=params, headers=headers)
+        resp.raise_for_status()
+        task_data = resp.json()
+        return TaskManagerInfo.model_validate(task_data)
     
     # Новые классы для подсказок (автодополнения) при работе с задачами
 
@@ -472,7 +556,7 @@ class Atom:
         resp = requests.post(url, json=data, headers=headers)
         resp.raise_for_status()
         response_data = resp.json()
-        return TasksManagerResponse.parse_obj(response_data)
+        return TasksManagerResponse.model_validate(response_data)
     
     def get_new_iot_detected(
         self
@@ -516,7 +600,7 @@ class Atom:
     stats_data['transportation_vehicles'] +
     stats_data['storage_vehicles']
 )
-        return Statistics.parse_obj(stats_data)
+        return Statistics.model_validate(stats_data)
 
     def set_task(
         self,
@@ -575,6 +659,8 @@ class Atom:
         data = {"action": "DONE", "entity_id": entity_id}
         resp = requests.post(url, json=data, headers=headers)
         resp.raise_for_status()
+        if resp.status_code != 200:
+            return False
         return True
 
     def send_command(self, command: commands, vehicle_id: int) -> bool:
@@ -602,8 +688,19 @@ class Atom:
             return False
         return True
 
+    def get_vehicle_activity(self, vehicle_id:int) -> List[VehicleActivity]:
+        url = 'https://app.rideatom.com/api/v2/admin/vehicles/activity'
+        headers = {"authorization": self.token}
+        data = {"vehicle_id": vehicle_id}
+        resp = requests.post(url, json=data, headers=headers)
+        resp.raise_for_status()
+        activity_data = resp.json()
+        if isinstance(activity_data, dict):
+            activity_data = activity_data.get('data', [])
+        return [VehicleActivity.model_validate(item) for item in activity_data]
+
 print("-----------------------")
-print("ATOM Mobility API | R07")
-print("by mc_c0rp for FAST FOX")
+print("ATOM Mobility API | R12")
+print("     t.me/mc_c0rp      ")
 print("       started!        ")
 print("-----------------------")
