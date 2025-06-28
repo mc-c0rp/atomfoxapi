@@ -178,3 +178,4 @@ else:
 [MIT](https://choosealicense.com/licenses/mit/)
 
 last upd 28.06.2025
+атом не ебите жопу за это пж
