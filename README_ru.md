@@ -59,7 +59,7 @@ else:
 # Статус транспортного средства FF0001 успешно изменён!
 ```
 
-#### Как **отправить команду** на транспортное средство
+#### Как **отправить команду** на транспортное средство:
 ```python
 import atomfoxapi
 
@@ -79,7 +79,7 @@ else:
 # Команда успешно отправлена на FF0001!
 ```
 
-#### Как **создать таск** в транспортном средстве
+#### Как **создать таск** в транспортном средстве:
 ```python
 import atomfoxapi
 
@@ -99,7 +99,7 @@ else:
 # Таск успешно создан в транспортном средстве FF0001!
 ```
 
-#### Как **получить алерты**
+#### Как **получить алерты**:
 ```python
 import atomfoxapi
 
@@ -116,7 +116,7 @@ for alert in alerts:
 # F0002 - OVERTURNED | 17.04.2025 15:04:43
 ```
 
-#### Как **получить статистику** с главной страницы Dashboard
+#### Как **получить статистику** с главной страницы Dashboard:
 ```python
 import atomfoxapi
 
@@ -134,9 +134,9 @@ print(f'Avaliable: {stats.available_vehicles}\nIn use: {stats.in_use_vehicles}\n
 # Maintenance: 30
 ```
 
-#### Как **получить Employee activity log** из Dashboard
+#### Как **получить Employee activity log** из Dashboard:
 ```python
-import main as atomfoxapi
+import atomfoxapi
 
 atom = atomfoxapi.Atom('Basic ZX...') # Токен авторизации
 
@@ -151,13 +151,28 @@ for log in logs:
 # office@foxscooters.md - FF0001 | Available → Transportation
 ```
 
+#### Как **отправить уведомление** пользователю:
+```python
+import atomfoxapi
+
+atom = atomfoxapi.Atom('Basic ZX...') # Токен авторизации
+
+response = atom.send_notification('title', 'message', 1234567) # отправляем уведомление
+
+if response:
+    print('Успешно!')
+else:
+    print('Произошла ошибка.')
+
+# скрипт отправляет уведомление в приложение пользователю с id 1234567
+# ТРЕБУЕМАЯ РОЛЬ >= General manager (та, с которой доступна вкладка Customers)
+```
+
 ## Авторы
 
 - [mc_c0rp](https://www.github.com/mc-c0rp) - GitHub
-- [@mc_c0rp](https://t.me/mc_c0rp) - Telegram
+- [@mc_c0rp](https://t.me/mc_c0rp) - Telegram (закинуть на пачку стиков разрабу можно там)
 
 ## Лицензия
 
 [MIT](https://choosealicense.com/licenses/mit/)
-
-Moldavskie Technologies | 17.04.2025
