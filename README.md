@@ -151,6 +151,23 @@ for log in logs:
 # office@foxscooters.md - FF0001 | Available → Transportation
 ```
 
+#### How to **send a notification** to a user:
+```python
+import atomfoxapi
+
+atom = atomfoxapi.Atom('Basic ZX...') # Authorization token
+
+response = atom.send_notification('title', 'message', 1234567) # send the notification
+
+if response:
+    print('Success!')
+else:
+    print('An error occurred.')
+
+# This script sends a notification to the app for the user with id 1234567
+# REQUIRED ROLE: ≥ General manager (the one with access to the Customers tab)
+```
+
 ## Authors
 
 - [mc_c0rp](https://www.github.com/mc-c0rp) - GitHub
@@ -160,4 +177,4 @@ for log in logs:
 
 [MIT](https://choosealicense.com/licenses/mit/)
 
-Moldavskie Technologies | 17.04.2025
+last upd 28.06.2025
