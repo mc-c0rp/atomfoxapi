@@ -20,7 +20,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-## Использование
+## ATOM REST API
 
 #### Как получить **все транспортные средства**:
 ```python
@@ -166,6 +166,34 @@ else:
 
 # скрипт отправляет уведомление в приложение пользователю с id 1234567
 # ТРЕБУЕМАЯ РОЛЬ >= General manager (та, с которой доступна вкладка Customers)
+```
+
+## ATOM GBFS
+
+#### Как **получить транспортные средства**:
+```python
+import atomfoxapi
+
+# ATOM Mobility предоставляет примерно такой URL для GBFS:
+# https://your-company.rideatom.com/gbfs/v3_0/en/gbfs?id=1337
+# в параметр url нужно передать часть до /gbfs/v3_0/en/gbfs (сам домен нужно оставить, https://your-company.rideatom.com/)
+# в параметр subaccount нужно передать ID субаккаунта, как пример возьмем ?id=1337, убираем ?id= -> 1337
+# важно отметить: get_vehicles() в GBFS возвращает только те транспортные средства, 
+# которые находятся со статусом Available (ACTIVE/READY)
+
+gbfs = atomfoxapi.GBFS(url='https://your-company.rideatom.com/', subaccount=1337) # авторизируемся в GBFS (замените на ваш URL и ID субаккаунта)
+
+vehicles = gbfs.get_vehicles() # получаем список транспортных средств из GBFS (list)
+
+for vehicle in vehicles:
+    print(f"{vehicle.vehicle_number} - {vehicle.lat}, {vehicle.lon}")
+print(f"ALL: {len(vehicles)}")
+
+# для чего это нужно? подстраховка на случай не штатных ситуаций. да, меньше данных, но хоть что то.
+# примерный вывод:
+# F0001 - 47.031074, 28.838779
+# F0002 - 47.031075, 28.838780
+# ALL: 2
 ```
 
 ## Авторы
