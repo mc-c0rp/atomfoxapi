@@ -1,7 +1,7 @@
 """
 ATOM MOBILITY API V2
 by mc_c0rp for FAST FOX
-Version: R12
+Version: R13
 
 Version Description:
 T - TEST
@@ -23,6 +23,7 @@ R09 - добавлена функция find_users | pypi ver. 1.2.6 / 08.05.202
 R10 - добавлена функция get_task_manager_info и get_tasks_manager | pypi ver. 1.2.7 / 11.05.2025
 R11 - исправлен баг с get_statistics() | pypi ver. 1.2.8 / 30.05.2025
 R12 - добавлена функция get_vehicle_activity | pypi ver. 1.3.0 / 26.06.2025
+R13 - добавлен класс GBFS, get_vehicles() | pypi ver 1.3.1 / 01.07.2025
 """
 
 from .main import Atom, commands, tasks, tasks_types
@@ -39,7 +40,9 @@ from .main import (
     TaskManagerInfo,
     TasksManagerResponse,
     TaskManagerItem,
-    VehicleActivity
+    VehicleActivity,
+    GBFSRentalUris,
+    GBFSVehicle,
 )
 
 __all__ = [
@@ -59,5 +62,8 @@ __all__ = [
     "TaskManagerInfo",
     "TasksManagerResponse",
     "TaskManagerItem",
-    "VehicleActivity"
+    "VehicleActivity",
+    "GBFSRentalUris",
+    "GBFSVehicle"
 ]
+# атом, так сложно? вы же это смотрите, я знаю

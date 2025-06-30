@@ -1,7 +1,3 @@
-# ATOM MOBILITY API V2
-# by mc_c0rp for FAST FOX
-# version R07
-
 # version description:
 # T - TEST
 # D - DEVELOPMENT
@@ -17,6 +13,7 @@
 # R08 - удален print ответа от сервера в функции get_rides() | pypi ver. 1.2.5 / 06.05.2025
 # R09 - добавлена функция find_users | pypi ver. 1.2.6 / 08.05.2025.    # R10 - добавлена функция get_task_manager_info и get_tasks_manager | pypi ver. 1.2.7 / 11.05.2025
 # R11 - исправлен баг с get_statistics() | pypi ver. 1.2.8 / 30.05.2025 # R12 - добавлена функция get_vehicle_activity | pypi ver. 1.3.0 / 26.06.2025
+# R13 - добавлен класс GBFS, get_vehicles() | pypi ver 1.3.1 / 01.07.2025
 
 try:
     import requests
@@ -269,6 +266,24 @@ class VehicleActivity(BaseModel):
     user: str
     action: str
     description: str # always '-', hui ego znaet pochemu
+
+class GBFSRentalUris(BaseModel):
+    android: Optional[str] = ""
+    ios: Optional[str] = ""
+    web: Optional[str] = ""
+
+class GBFSVehicle(BaseModel):
+    vehicle_id: int
+    vehicle_number: str
+    lat: float
+    lon: float
+    is_reserved: bool
+    is_disabled: bool
+    rental_uris: GBFSRentalUris
+    vehicle_type_id: str
+    current_range_meters: int
+    pricing_plan_id: str
+
 
 class Atom:
     def __init__(self, token: str):
@@ -698,9 +713,33 @@ class Atom:
         if isinstance(activity_data, dict):
             activity_data = activity_data.get('data', [])
         return [VehicleActivity.model_validate(item) for item in activity_data]
+    
+class GBFS:
+    def __init__(self, url: str, subaccount: int):
+        """
+        :param url: ATOM Mobility GBFS URL
+        :example: 'https://your-company.rideatom.com/'
+        :param subaccount: Subaccount ID
+        :example: 1337
+        """
+        self.url = url
+        if not url.endswith('/'):
+            self.url += '/'
+        self.subaccount = subaccount
+
+    def get_vehicles(self) -> List[RidesItem]:
+        url = f'{self.url}gbfs/v3_0/en/vehicle_status?id={self.subaccount}'
+
+        resp = requests.get(url)
+        resp.raise_for_status()
+        vehicles_raw = resp.json().get('data', []).get('vehicles', [])
+        for vehicle in vehicles_raw:
+            vehicle['vehicle_number'] = '/'.join(vehicle['rental_uris']['android'].split('/')[3:])
+        vehicles = [GBFSVehicle.model_validate(item) for item in vehicles_raw]
+        return vehicles
 
 print("-----------------------")
-print("ATOM Mobility API | R12")
+print("ATOM Mobility API | R13")
 print("     t.me/mc_c0rp      ")
 print("       started!        ")
 print("-----------------------")
