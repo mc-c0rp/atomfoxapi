@@ -20,7 +20,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-## Utilizare
+## ATOM REST API
 
 #### Cum să obțineți **toate vehiculele**:
 ```python
@@ -168,6 +168,33 @@ else:
 # ROL NECESAR: ≥ General manager (cel care are acces la fila Customers)
 ```
 
+## ATOM GBFS
+
+#### Cum să obțineți **vehiculele**:
+```python
+import atomfoxapi
+
+# ATOM Mobility oferă un URL pentru GBFS similar cu:
+# https://your-company.rideatom.com/gbfs/v3_0/en/gbfs?id=1337
+# Pentru parametrul `url`, trebuie transmisă partea URL-ului până la /gbfs/v3_0/en/gbfs (păstrați domeniul, ex: https://your-company.rideatom.com/)
+# Pentru parametrul `subaccount`, trebuie transmis ID-ul subcontului – de exemplu, din ?id=1337 eliminăm ?id= -> obținem 1337
+# Este important de menționat: get_vehicles() din GBFS returnează doar vehiculele care sunt în status Available (ACTIVE/READY)
+
+gbfs = atomfoxapi.GBFS(url='https://your-company.rideatom.com/', subaccount=1337)  # ne conectăm la GBFS (înlocuiți cu URL-ul și ID-ul vostru de subcont)
+
+vehicles = gbfs.get_vehicles()  # obținem lista vehiculelor disponibile din GBFS (listă)
+
+for vehicle in vehicles:
+    print(f"{vehicle.vehicle_number} - {vehicle.lat}, {vehicle.lon}")
+print(f"TOATE: {len(vehicles)}")
+
+# De ce este necesar acest script? Este o soluție de rezervă pentru situații neprevăzute. Da, conține mai puține date, dar e mai bine decât nimic.
+# Exemplu de rezultat:
+# F0001 - 47.031074, 28.838779
+# F0002 - 47.031075, 28.838780
+# TOATE: 2
+```
+
 ## Autori
 
 - [mc_c0rp](https://www.github.com/mc-c0rp) - GitHub
@@ -177,4 +204,4 @@ else:
 
 [MIT](https://choosealicense.com/licenses/mit/)
 
-last upd 28.06.2025 (переведено через чат гпт)
+last upd 01.07.2025 (переведено через чат гпт)
