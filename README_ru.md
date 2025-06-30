@@ -205,5 +205,5 @@ print(f"ALL: {len(vehicles)}")
 
 [MIT](https://choosealicense.com/licenses/mit/)
 
-last upd 28.06.2025
+last upd 01.07.2025
 атом не ебите жопу за это пж
