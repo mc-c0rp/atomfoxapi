@@ -20,7 +20,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-## How to use
+## ATOM REST API
 
 #### How to get **all vehicles**:
 ```python
@@ -168,6 +168,33 @@ else:
 # REQUIRED ROLE: ≥ General manager (the one with access to the Customers tab)
 ```
 
+## ATOM GBFS
+
+#### How to get **vehicles**:
+```python
+import atomfoxapi
+
+# ATOM Mobility provides a GBFS URL like:
+# https://your-company.rideatom.com/gbfs/v3_0/en/gbfs?id=1337
+# For the `url` parameter, provide the part up to /gbfs/v3_0/en/gbfs (keep the domain, e.g., https://your-company.rideatom.com/)
+# For the `subaccount` parameter, use the subaccount ID – for example, from ?id=1337 remove ?id= -> you get 1337
+# Important note: get_vehicles() in GBFS only returns vehicles that are in Available status (ACTIVE/READY)
+
+gbfs = atomfoxapi.GBFS(url='https://your-company.rideatom.com/', subaccount=1337)  # authenticate to GBFS (replace with your URL and subaccount ID)
+
+vehicles = gbfs.get_vehicles()  # get the list of available vehicles from GBFS (as a list)
+
+for vehicle in vehicles:
+    print(f"{vehicle.vehicle_number} - {vehicle.lat}, {vehicle.lon}")
+print(f"ALL: {len(vehicles)}")
+
+# Why is this needed? It's a backup solution for unexpected situations. Yes, it gives less data, but it's better than nothing.
+# Example output:
+# F0001 - 47.031074, 28.838779
+# F0002 - 47.031075, 28.838780
+# ALL: 2
+```
+
 ## Authors
 
 - [mc_c0rp](https://www.github.com/mc-c0rp) - GitHub
@@ -177,4 +204,4 @@ else:
 
 [MIT](https://choosealicense.com/licenses/mit/)
 
-last upd 28.06.2025
+last upd 01.07.2025
